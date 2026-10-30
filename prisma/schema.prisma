@@ -1,0 +1,240 @@
+// Nelvest data model
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  INVESTOR
+  ADMIN
+}
+
+enum AdminRole {
+  OWNER
+  OPERATOR
+  KYC_REVIEWER
+  VIEWER
+}
+
+enum KycStatus {
+  NOT_STARTED
+  PENDING
+  MANUAL_REVIEW
+  VERIFIED
+  REJECTED
+}
+
+enum AccountMode {
+  MANAGED
+  BYO
+}
+
+enum BotState {
+  RUNNING
+  PAUSED
+  STOPPED
+}
+
+enum TradeMode {
+  PAPER
+  TESTNET
+  LIVE
+}
+
+enum Side {
+  BUY
+  SELL
+}
+
+model User {
+  id            String     @id @default(cuid())
+  email         String     @unique
+  passwordHash  String
+  firstName     String
+  lastName      String
+  phone         String?
+  role          Role       @default(INVESTOR)
+  adminRole     AdminRole?
+  totpSecretEnc String? // encrypted with KEY_ENCRYPTION_KEY
+  totpEnabled   Boolean    @default(false)
+  kycStatus     KycStatus  @default(NOT_STARTED)
+  disabled      Boolean    @default(false)
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+
+  riskProfile    RiskProfile?
+  kycSubmissions KycSubmission[] @relation("subject")
+  kycReviews     KycSubmission[] @relation("reviewer")
+  accounts       InvestmentAccount[]
+  auditLogs      AuditLog[]
+  invitesSent    AdminInvite[]
+}
+
+model RiskProfile {
+  id             String   @id @default(cuid())
+  userId         String   @unique
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  experience     String
+  drawdownAction String
+  sourceOfFunds  String
+  acknowledgedAt DateTime
+}
+
+model KycSubmission {
+  id             String    @id @default(cuid())
+  userId         String
+  user           User      @relation("subject", fields: [userId], references: [id], onDelete: Cascade)
+  provider       String
+  idType         String
+  idNumberHash   String // sha256 of the ID number; the raw number is never stored
+  idNumberLast4  String
+  dateOfBirth    String
+  address        String
+  status         KycStatus @default(PENDING)
+  providerRef    String?
+  providerResult Json?
+  reviewerId     String?
+  reviewer       User?     @relation("reviewer", fields: [reviewerId], references: [id])
+  reviewNote     String?
+  reviewedAt     DateTime?
+  createdAt      DateTime  @default(now())
+
+  @@index([status])
+}
+
+model InvestmentAccount {
+  id              String      @id @default(cuid())
+  userId          String
+  user            User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  mode            AccountMode
+  active          Boolean     @default(false)
+  // Paper/ledger balances, in USDT
+  cashUsdt        Decimal     @default(0) @db.Decimal(20, 8)
+  holdings        Json        @default("{}") // { "BTC": "0.01", ... }
+  peakValueUsdt   Decimal     @default(0) @db.Decimal(20, 8)
+  depositedUsdt   Decimal     @default(0) @db.Decimal(20, 8)
+  // Investor-set limits (BYO) or defaults (managed)
+  budgetUsdt      Decimal     @default(0) @db.Decimal(20, 8)
+  riskLevel       String      @default("Balanced")
+  stopDrawdownPct Int         @default(15)
+  pausedReason    String?
+  createdAt       DateTime    @default(now())
+
+  connection ExchangeConnection?
+  trades     Trade[]
+  ledger     LedgerEntry[]
+
+  @@index([userId])
+}
+
+model ExchangeConnection {
+  id             String            @id @default(cuid())
+  accountId      String            @unique
+  account        InvestmentAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  exchange       String
+  apiKeyEnc      String
+  apiSecretEnc   String
+  keyHint        String // last 4 chars of the API key, for display
+  canTrade       Boolean           @default(false)
+  canWithdraw    Boolean? // null = exchange does not report it
+  status         String            @default("PENDING") // PENDING | ACTIVE | REJECTED | REVOKED
+  statusDetail   String?
+  lastCheckedAt  DateTime?
+  createdAt      DateTime          @default(now())
+}
+
+model BotConfig {
+  id              Int      @id @default(1)
+  state           BotState @default(PAUSED)
+  strategy        String   @default("balanced_momentum")
+  timeframe       String   @default("4h")
+  pairs           String[] @default(["BTC/USDT", "ETH/USDT", "SOL/USDT", "BNB/USDT"])
+  maxPositionPct  Decimal  @default(5) @db.Decimal(6, 2)
+  drawdownPausePct Decimal @default(15) @db.Decimal(6, 2)
+  minConfidence   Decimal  @default(0.62) @db.Decimal(4, 3)
+  dailyTradeCap   Int      @default(24)
+  updatedById     String?
+  updatedAt       DateTime @updatedAt
+}
+
+model Signal {
+  id         String   @id @default(cuid())
+  pair       String
+  timeframe  String
+  action     String // BUY | SELL | HOLD
+  confidence Decimal  @db.Decimal(4, 3)
+  price      Decimal  @db.Decimal(20, 8)
+  features   Json
+  createdAt  DateTime @default(now())
+
+  @@index([pair, createdAt])
+}
+
+model Trade {
+  id              String            @id @default(cuid())
+  accountId       String
+  account         InvestmentAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  pair            String
+  side            Side
+  qty             Decimal           @db.Decimal(28, 12)
+  price           Decimal           @db.Decimal(20, 8)
+  feeUsdt         Decimal           @default(0) @db.Decimal(20, 8)
+  mode            TradeMode
+  reason          String
+  confidence      Decimal?          @db.Decimal(4, 3)
+  exchangeOrderId String?
+  realizedPnlUsdt Decimal?          @db.Decimal(20, 8)
+  createdAt       DateTime          @default(now())
+
+  @@index([accountId, createdAt])
+}
+
+model LedgerEntry {
+  id        String            @id @default(cuid())
+  accountId String
+  account   InvestmentAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  type      String // DEPOSIT | WITHDRAWAL | FEE | ADJUSTMENT
+  asset     String
+  amount    Decimal           @db.Decimal(28, 12)
+  status    String            @default("PENDING") // PENDING | COMPLETED | REJECTED
+  reference String            @unique
+  note      String?
+  createdAt DateTime          @default(now())
+}
+
+model AdminInvite {
+  id          String    @id @default(cuid())
+  email       String
+  role        AdminRole
+  tokenHash   String    @unique
+  invitedById String
+  invitedBy   User      @relation(fields: [invitedById], references: [id])
+  expiresAt   DateTime
+  acceptedAt  DateTime?
+  createdAt   DateTime  @default(now())
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  actorId   String?
+  actor     User?    @relation(fields: [actorId], references: [id])
+  action    String
+  detail    Json?
+  ip        String?
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+}
+
+model EngineRun {
+  id         String   @id @default(cuid())
+  startedAt  DateTime @default(now())
+  finishedAt DateTime?
+  mode       TradeMode
+  summary    Json?
+  error      String?
+}
