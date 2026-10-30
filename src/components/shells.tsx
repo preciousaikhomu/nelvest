@@ -18,13 +18,15 @@ export async function pageAdmin(): Promise<User> {
   return u;
 }
 
+const INVESTOR_NAV: [string, string][] = [["/app", "Portfolio"], ["/app/kyc", "Identity"], ["/app/funds", "Deposit & withdraw"], ["/app/connect", "Connect exchange"], ["/app/trades", "Trade history"]];
+
 export function InvestorShell({ user: u, current, children }: { user: User; current: string; children: ReactNode }) {
+  const who = <><b>{u.firstName} {u.lastName}</b><Status s={u.kycStatus} /><LogoutButton /></>;
   return (
     <>
-      <TopBar links={[["/", "Home"], ["/app", "Dashboard"]]} />
+      <TopBar links={[["/", "Home"], ["/app", "Dashboard"]]} sections={INVESTOR_NAV} sectionLabel="Your account" who={who} />
       <div className="wrap shell">
-        <SideNav current={current} who={<><b>{u.firstName} {u.lastName}</b><Status s={u.kycStatus} /><LogoutButton /></>}
-          items={[["/app", "Portfolio"], ["/app/kyc", "Identity"], ["/app/funds", "Deposit & withdraw"], ["/app/connect", "Connect exchange"], ["/app/trades", "Trade history"]]} />
+        <SideNav current={current} who={who} items={INVESTOR_NAV} />
         <div className="main">{children}</div>
       </div>
     </>
@@ -34,12 +36,12 @@ export function InvestorShell({ user: u, current, children }: { user: User; curr
 const ADMIN_NAV: [string, string][] = [["/admin", "Overview"], ["/admin/investors", "Investors & KYC"], ["/admin/bot", "Bot control"], ["/admin/admins", "Admins"], ["/admin/audit", "Audit log"]];
 
 export function AdminShell({ user: u, current, children }: { user: User; current: string; children: ReactNode }) {
+  const who = <><b>{u.firstName} {u.lastName}</b><span className="chip gold">{(u.adminRole ?? "").replace("_", " ").toLowerCase()}</span><LogoutButton /></>;
   return (
     <>
-      <TopBar links={[["/", "Public site"], ["/admin", "Console"]]} />
+      <TopBar links={[["/", "Public site"], ["/admin", "Console"]]} sections={ADMIN_NAV} sectionLabel="Admin console" who={who} />
       <div className="wrap shell">
-        <SideNav current={current} items={ADMIN_NAV}
-          who={<><b>{u.firstName} {u.lastName}</b><span className="chip gold">{(u.adminRole ?? "").replace("_", " ").toLowerCase()}</span><LogoutButton /></>} />
+        <SideNav current={current} items={ADMIN_NAV} who={who} />
         <div className="main">{children}</div>
       </div>
     </>

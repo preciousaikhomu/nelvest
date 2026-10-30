@@ -1,15 +1,16 @@
 import Link from "next/link";
 import { ReactNode } from "react";
 import { depositsEnabled, tradingMode } from "@/lib/env";
+import NavMenu from "./NavMenu";
 
-export function TopBar({ links }: { links?: [string, string][] }) {
-  const nav = links ?? [["/", "Home"], ["/signup", "Open account"], ["/login", "Sign in"]];
+export function TopBar({ links, sections, sectionLabel, who }: { links?: [string, string][]; sections?: [string, string][]; sectionLabel?: string; who?: ReactNode }) {
+  const nav: [string, string][] = links ?? [["/", "Home"], ["/signup", "Open account"], ["/login", "Sign in"]];
   return (
     <>
       <header className="top">
         <div className="wrap">
           <Link className="brand" href="/"><span className="mark" aria-hidden="true" />Nelvest</Link>
-          <nav className="nav" aria-label="Main">{nav.map(([h, l]) => <Link key={h} href={h}>{l}</Link>)}</nav>
+          <NavMenu links={nav} sections={sections} sectionLabel={sectionLabel} who={who} />
         </div>
       </header>
       <ModeNotice />
