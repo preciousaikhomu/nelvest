@@ -201,7 +201,7 @@ code.sel{user-select:all;font-family:var(--f-mono);font-size:12px;background:var
 .mm-group .eyebrow{padding:8px 4px 6px}
 .mm-group a{display:flex;align-items:center;min-height:46px;padding:0 12px;border-radius:8px;color:var(--fg);text-decoration:none;font-weight:500}
 .mm-group a[aria-current="page"]{background:var(--sunk);color:var(--accent)}
-.mm-scrim{position:fixed;inset:0;z-index:8;background:rgba(11,15,32,.35);border:0;padding:0;border-radius:0;cursor:default}
+.mm-scrim{position:absolute;top:100%;left:0;right:0;height:100dvh;z-index:8;background:rgba(11,15,32,.35);border:0;padding:0;border-radius:0;cursor:default}
 body.menu-open{overflow:hidden}
 @media (max-width:900px){
   .nav-desktop{display:none}
