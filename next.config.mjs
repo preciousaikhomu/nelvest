@@ -1,5 +1,8 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // Test deploys: type and lint checks run in CI (see build plan), not in the Vercel build.
+  typescript: { ignoreBuildErrors: true },
+  eslint: { ignoreDuringBuilds: true },
   experimental: { serverComponentsExternalPackages: ["ccxt", "@prisma/client", "bcryptjs"] },
   async headers() {
     return [{
