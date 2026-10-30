@@ -38,7 +38,7 @@ npm run dev                   # http://localhost:3000
 2. On vercel.com: **Add New → Project → Import** the `nelvest` repo.
 3. In the project, open **Storage → Create Database → Neon (Postgres)** and connect it. This sets `DATABASE_URL`.
 4. In **Settings → Environment Variables**, add `SESSION_SECRET`, `KEY_ENCRYPTION_KEY`, `CRON_SECRET` (each from `npm run keygen`), plus `TRADING_MODE=paper`, `DEPOSITS_ENABLED=false`, `KYC_PROVIDER=mock`.
-5. Deploy. Then, from your computer with the same `DATABASE_URL` in `.env`, run `npm run db:push` and `npm run admin:create` once.
+5. Add `SETUP_TOKEN` (from `npm run keygen`) and deploy. Then open `/admin/setup` on your site, enter the token, and create the owner account. It works once.
 
 ## Running the trading engine
 
